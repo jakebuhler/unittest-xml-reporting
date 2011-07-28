@@ -39,36 +39,16 @@ class XMLTestRunner(DjangoTestSuiteRunner):
         
         Returns the number of tests that failed.
         """
-        setup_test_environment()
-        
-        settings.DEBUG = False
-        
+        self.setup_test_environment()
+        suite = self.build_suite(test_labels, extra_tests)
+        old_config = self.setup_databases()
+
         verbose = getattr(settings, 'TEST_OUTPUT_VERBOSE', False)
         descriptions = getattr(settings, 'TEST_OUTPUT_DESCRIPTIONS', False)
         output = getattr(settings, 'TEST_OUTPUT_DIR', '.')
-        
-        suite = unittest.TestSuite()
-        
-        if test_labels:
-            for label in test_labels:
-                if '.' in label:
-                    suite.addTest(build_test(label))
-                else:
-                    app = get_app(label)
-                    suite.addTest(build_suite(app))
-        else:
-            for app in get_apps():
-                suite.addTest(build_suite(app))
-        
-        for test in extra_tests:
-            suite.addTest(test)
-
-        old_config = self.setup_databases()
-
         result = xmlrunner.XMLTestRunner(
             verbose=verbose, descriptions=descriptions, output=output).run(suite)
-        
+
         self.teardown_databases(old_config)
-        teardown_test_environment()
-        
-        return len(result.failures) + len(result.errors)
+        self.teardown_test_environment()
+        return self.suite_result(suite, result)
